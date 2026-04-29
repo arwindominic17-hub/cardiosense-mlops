@@ -187,7 +187,7 @@ jobs:
       - name: Push to container registry (main branch only)
         if: github.ref == 'refs/heads/main'
         run: |
-          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker tag cardiosense-ai:latest ghcr.io/${{ github.repository }}/cardiosense-ai:latest
           docker tag cardiosense-ai:latest ghcr.io/${{ github.repository }}/cardiosense-ai:${{ github.sha }}
           docker push ghcr.io/${{ github.repository }}/cardiosense-ai:latest
