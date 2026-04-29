@@ -261,3 +261,43 @@ def train_and_log(
         log.info(f"Production bundle saved → {bundle_path}")
 
     return best_model, best_metrics, best_run_id, best_name
+
+
+if __name__ == "__main__":
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from preprocess import load_data, preprocess
+
+    ROOT = os.path.dirname(os.path.dirname(__file__))
+    DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "data", "heart.csv"))
+    MODELS_DIR = os.environ.get("MODELS_DIR", os.path.join(ROOT, "models"))
+    MLFLOW_URI = os.environ.get(
+        "MLFLOW_TRACKING_URI", f"sqlite:///{os.path.join(ROOT, 'mlflow.db')}"
+    )
+    EXPERIMENT = os.environ.get("EXPERIMENT", "CardioSense_AI")
+
+    log.info("Loading and preprocessing data...")
+    df = load_data(DATA_PATH)
+    X_train, X_test, y_train, y_test, scaler = preprocess(df)
+
+    log.info("Starting training...")
+    best_model, best_metrics, best_run_id, best_name = train_and_log(
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        scaler=scaler,
+        experiment_name=EXPERIMENT,
+        models_dir=MODELS_DIR,
+        mlflow_uri=MLFLOW_URI,
+    )
+
+    print("\n✅  Training complete.")
+    print(f"   Best Model:  {best_name}")
+    print(f"   Accuracy:    {best_metrics['accuracy']:.1%}")
+    print(f"   AUC-ROC:     {best_metrics['auc_roc']:.4f}")
+    print(f"   F1-Score:    {best_metrics['f1_score']:.4f}")
+    print(f"   Threshold:   {best_metrics['decision_threshold']}")
+    print(f"   MLflow Run:  {best_run_id}")
