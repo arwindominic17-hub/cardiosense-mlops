@@ -21,7 +21,7 @@ mlruns/
 src/mlruns/
 
 # Model artifacts (large binaries — use MLflow registry instead)
-models/*.pkl
+# models/*.pkl  ← uncomment to exclude pkl files from git
 
 # Jupyter
 .ipynb_checkpoints/
