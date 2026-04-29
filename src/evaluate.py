@@ -10,11 +10,9 @@ import logging
 import os
 
 import mlflow
-import numpy as np
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
-    classification_report,
     confusion_matrix,
     f1_score,
     roc_auc_score,

@@ -119,7 +119,7 @@ def run_pipeline():
     log.info("=" * 60)
     log.info(f"  Best Model:   {best_name}")
     log.info(
-        f"  Accuracy:     {eval_metrics['accuracy']:.4f}  ({eval_metrics['accuracy']*100:.1f}%)"
+        f"  Accuracy:     {eval_metrics['accuracy']:.4f}  ({eval_metrics['accuracy'] * 100:.1f}%)"
     )
     log.info(f"  AUC-ROC:      {eval_metrics['auc_roc']:.4f}")
     log.info(f"  F1-Score:     {eval_metrics['f1_score']:.4f}")

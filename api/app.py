@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 import joblib
-import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field

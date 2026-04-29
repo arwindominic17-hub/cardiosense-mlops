@@ -14,7 +14,7 @@ import joblib
 import mlflow
 import mlflow.sklearn
 import numpy as np
-import pandas as pd
+import yaml
 from mlflow.models.signature import infer_signature
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import (
@@ -30,18 +30,12 @@ from sklearn.metrics import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-import os as _os
-
-# ── Model configs to evaluate ──
-# These defaults are overridden by params.yaml when run via DVC
-import yaml as _yaml
-
 
 def _load_params():
-    p = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "params.yaml")
-    if _os.path.exists(p):
+    p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "params.yaml")
+    if os.path.exists(p):
         with open(p) as f:
-            return _yaml.safe_load(f)
+            return yaml.safe_load(f)
     return {}
 
 
@@ -161,7 +155,7 @@ def train_and_log(
     best_threshold = 0.5
 
     # ── parent run — holds experiment-level metadata ──
-    with mlflow.start_run(run_name="CardioSense_Training_Pipeline") as parent_run:
+    with mlflow.start_run(run_name="CardioSense_Training_Pipeline"):
 
         mlflow.set_tags(
             {
