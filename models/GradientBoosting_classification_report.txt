@@ -1,0 +1,10 @@
+Model: GradientBoosting
+==================================================
+              precision    recall  f1-score   support
+
+  No Disease       0.91      0.75      0.82        28
+     Disease       0.82      0.94      0.87        33
+
+    accuracy                           0.85        61
+   macro avg       0.86      0.84      0.85        61
+weighted avg       0.86      0.85      0.85        61

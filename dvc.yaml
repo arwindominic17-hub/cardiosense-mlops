@@ -1,0 +1,61 @@
+# dvc.yaml
+# =========
+# CardioSense AI — DVC Pipeline Definition
+# Run with: dvc repro
+# Visualize with: dvc dag
+
+stages:
+
+  # ── Stage 1: Data Validation ──────────────────────────────────
+  validate:
+    cmd: python src/preprocess.py
+    deps:
+      - data/heart.csv
+      - src/preprocess.py
+    params:
+      - params.yaml:
+          - data.test_size
+          - data.random_state
+    outs:
+      - data/validated_flag.txt:
+          cache: false
+
+  # ── Stage 2: Train ────────────────────────────────────────────
+  train:
+    cmd: python run_pipeline.py
+    deps:
+      - data/heart.csv
+      - src/preprocess.py
+      - src/train.py
+      - src/pipeline.py
+    params:
+      - params.yaml:
+          - data.test_size
+          - data.random_state
+          - train.n_estimators_rf
+          - train.n_estimators_gb
+          - train.learning_rate_gb
+          - train.max_depth_gb
+    outs:
+      - models/production_bundle.pkl
+      - models/RandomForest.pkl
+      - models/GradientBoosting.pkl
+    metrics:
+      - models/evaluation_report.json:
+          cache: false
+
+  # ── Stage 3: Evaluate ─────────────────────────────────────────
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - models/production_bundle.pkl
+      - data/heart.csv
+      - src/evaluate.py
+    outs:
+      - models/RandomForest_classification_report.txt:
+          cache: false
+      - models/GradientBoosting_classification_report.txt:
+          cache: false
+    metrics:
+      - models/evaluation_report.json:
+          cache: false

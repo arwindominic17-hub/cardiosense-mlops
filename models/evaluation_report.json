@@ -1,0 +1,52 @@
+{
+  "model": "RandomForest",
+  "performance": {
+    "accuracy": 0.7705,
+    "auc_roc": 0.882,
+    "f1_score": 0.7941,
+    "sensitivity": 0.8182,
+    "specificity": 0.7143,
+    "tp": 27,
+    "tn": 20,
+    "fp": 8,
+    "fn": 6,
+    "total_test": 61,
+    "correct": 47,
+    "decision_threshold": 0.6
+  },
+  "feature_importance_top5": {
+    "cp": 0.1568,
+    "thal": 0.118,
+    "thalach": 0.1136,
+    "oldpeak": 0.1103,
+    "chol": 0.0893
+  },
+  "drift_summary": {
+    "drifted_features": [
+      "chol",
+      "restecg",
+      "thal"
+    ],
+    "clean_features": [
+      "age",
+      "sex",
+      "cp",
+      "trestbps",
+      "fbs",
+      "thalach",
+      "exang",
+      "oldpeak",
+      "slope",
+      "ca"
+    ]
+  },
+  "clinical_thresholds": {
+    "min_sensitivity": 0.8,
+    "min_specificity": 0.7,
+    "min_auc": 0.85,
+    "sensitivity_ok": true,
+    "specificity_ok": true,
+    "auc_ok": true,
+    "ready_for_prod": true
+  }
+}

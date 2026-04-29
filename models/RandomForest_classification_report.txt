@@ -1,0 +1,10 @@
+Model: RandomForest
+==================================================
+              precision    recall  f1-score   support
+
+  No Disease       0.77      0.71      0.74        28
+     Disease       0.77      0.82      0.79        33
+
+    accuracy                           0.77        61
+   macro avg       0.77      0.77      0.77        61
+weighted avg       0.77      0.77      0.77        61

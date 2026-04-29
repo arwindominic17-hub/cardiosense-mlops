@@ -1,0 +1,35 @@
+# params.yaml
+# ===========
+# CardioSense AI — Single source of truth for all pipeline parameters.
+# DVC tracks changes to these values and reruns affected stages automatically.
+# Change a value here and run `dvc repro` to retrain with new settings.
+
+data:
+  test_size: 0.2
+  random_state: 42
+  data_path: data/heart.csv
+
+train:
+  # Random Forest
+  n_estimators_rf: 200
+  max_features_rf: sqrt
+  criterion_rf: gini
+
+  # Gradient Boosting
+  n_estimators_gb: 100
+  learning_rate_gb: 0.1
+  max_depth_gb: 3
+
+  # Threshold optimization
+  min_sensitivity: 0.80
+  min_specificity: 0.70
+
+evaluate:
+  drift_threshold: 0.15
+  min_auc: 0.85
+  min_sensitivity: 0.80
+  min_specificity: 0.70
+
+mlflow:
+  experiment_name: CardioSense_AI
+  tracking_uri: sqlite:///mlflow.db
