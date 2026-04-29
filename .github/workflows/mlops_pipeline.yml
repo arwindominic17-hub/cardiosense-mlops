@@ -34,10 +34,10 @@ jobs:
         run: pip install flake8 black isort
 
       - name: Check formatting (black)
-        run: black --check src/ api/ tests/
+        run: black --check --line-length 100 src/ api/ tests/
 
       - name: Check import order (isort)
-        run: isort --check-only src/ api/ tests/
+        run: isort --check-only --profile black src/ api/ tests/
 
       - name: Lint (flake8)
         run: flake8 src/ api/ tests/ --max-line-length=100 --ignore=E203,W503
