@@ -1,0 +1,68 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python run_pipeline.py
+    deps:
+    - path: data/heart.csv
+      hash: md5
+      md5: f8376ac9db4d25345aead44787474f27
+      size: 11328
+    - path: src/evaluate.py
+      hash: md5
+      md5: 9504fb1242c4dedb082ddac6afe6a310
+      size: 4695
+    - path: src/pipeline.py
+      hash: md5
+      md5: ae8f8677f3c45d2abe6804724ce72071
+      size: 4875
+    - path: src/preprocess.py
+      hash: md5
+      md5: 2d0314b4b5bec7ceda9cc81bcb207610
+      size: 4922
+    - path: src/train.py
+      hash: md5
+      md5: 419b0da6c1311d74f7e66a8f7895fe16
+      size: 10756
+    params:
+      params.yaml:
+        data.random_state: 42
+        data.test_size: 0.2
+        train.learning_rate_gb: 0.1
+        train.max_depth_gb: 3
+        train.min_sensitivity: 0.8
+        train.min_specificity: 0.7
+        train.n_estimators_gb: 100
+        train.n_estimators_rf: 200
+    outs:
+    - path: models/GradientBoosting.pkl
+      hash: md5
+      md5: dce283ff6356ce1e43e8cec2f45a952c
+      size: 140200
+    - path: models/GradientBoosting_classification_report.txt
+      hash: md5
+      md5: e7662b475cdb4d6c4cf17f3e54293a69
+      size: 411
+    - path: models/GradientBoosting_feature_importance.json
+      hash: md5
+      md5: d872ed650dd7072708bc612ac6ab77fa
+      size: 256
+    - path: models/RandomForest.pkl
+      hash: md5
+      md5: 5cf732ba925f3b1fb91b0e5ebfef3f6e
+      size: 1405305
+    - path: models/RandomForest_classification_report.txt
+      hash: md5
+      md5: 1c8f697a813231301cbc050b949645d3
+      size: 407
+    - path: models/RandomForest_feature_importance.json
+      hash: md5
+      md5: 674b4c34b0b4125b97eb1e37ff27cf0d
+      size: 257
+    - path: models/evaluation_report.json
+      hash: md5
+      md5: c4c947f5faf7745d5ea12ba913c164a2
+      size: 980
+    - path: models/production_bundle.pkl
+      hash: md5
+      md5: 4c1d37e8019824494757fcdc34930fd7
+      size: 1406384

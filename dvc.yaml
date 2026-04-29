@@ -6,21 +6,7 @@
 
 stages:
 
-  # ── Stage 1: Data Validation ──────────────────────────────────
-  validate:
-    cmd: python src/preprocess.py
-    deps:
-      - data/heart.csv
-      - src/preprocess.py
-    params:
-      - params.yaml:
-          - data.test_size
-          - data.random_state
-    outs:
-      - data/validated_flag.txt:
-          cache: false
-
-  # ── Stage 2: Train ────────────────────────────────────────────
+  # ── Stage 1: Train (full pipeline) ───────────────────────────
   train:
     cmd: python run_pipeline.py
     deps:
@@ -28,6 +14,7 @@ stages:
       - src/preprocess.py
       - src/train.py
       - src/pipeline.py
+      - src/evaluate.py
     params:
       - params.yaml:
           - data.test_size
@@ -36,26 +23,16 @@ stages:
           - train.n_estimators_gb
           - train.learning_rate_gb
           - train.max_depth_gb
+          - train.min_sensitivity
+          - train.min_specificity
     outs:
       - models/production_bundle.pkl
       - models/RandomForest.pkl
       - models/GradientBoosting.pkl
-    metrics:
-      - models/evaluation_report.json:
-          cache: false
-
-  # ── Stage 3: Evaluate ─────────────────────────────────────────
-  evaluate:
-    cmd: python src/evaluate.py
-    deps:
-      - models/production_bundle.pkl
-      - data/heart.csv
-      - src/evaluate.py
-    outs:
-      - models/RandomForest_classification_report.txt:
-          cache: false
-      - models/GradientBoosting_classification_report.txt:
-          cache: false
+      - models/RandomForest_classification_report.txt
+      - models/GradientBoosting_classification_report.txt
+      - models/RandomForest_feature_importance.json
+      - models/GradientBoosting_feature_importance.json
     metrics:
       - models/evaluation_report.json:
           cache: false
