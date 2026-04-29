@@ -34,6 +34,12 @@ MODELS_DIR = os.environ.get("MODELS_DIR", os.path.join(_ROOT_DIR, "models"))
 MLFLOW_URI = os.environ.get(
     "MLFLOW_TRACKING_URI", f"sqlite:///{os.path.join(_ROOT_DIR, 'mlflow.db')}"
 )
+
+# Resolve relative paths against project root so CI env vars work correctly
+if not os.path.isabs(DATA_PATH):
+    DATA_PATH = os.path.join(_ROOT_DIR, DATA_PATH)
+if not os.path.isabs(MODELS_DIR):
+    MODELS_DIR = os.path.join(_ROOT_DIR, MODELS_DIR)
 EXPERIMENT_NAME = os.environ.get("EXPERIMENT", "CardioSense_AI")
 TEST_SIZE = float(os.environ.get("TEST_SIZE", "0.2"))
 RANDOM_STATE = int(os.environ.get("RANDOM_STATE", "42"))
