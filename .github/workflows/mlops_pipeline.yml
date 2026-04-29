@@ -105,9 +105,7 @@ jobs:
           DATA_PATH:    ${{ env.DATA_PATH }}
           MODELS_DIR:   ${{ env.MODELS_DIR }}
           EXPERIMENT:   ${{ env.EXPERIMENT_NAME }}
-        run: |
-          cd src
-          python pipeline.py
+        run: python run_pipeline.py
 
       - name: Gate on minimum AUC-ROC
         run: |
