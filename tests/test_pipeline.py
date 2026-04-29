@@ -5,41 +5,45 @@ Unit tests for CardioSense AI MLOps pipeline components.
 Run with: python -m pytest tests/ -v
 """
 
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 from sklearn.ensemble import RandomForestClassifier
 
-from preprocess import load_data, validate_data, preprocess, FEATURE_COLS
-from evaluate import evaluate_model, detect_drift
-
+from evaluate import detect_drift, evaluate_model
+from preprocess import FEATURE_COLS, load_data, preprocess, validate_data
 
 # ── Fixtures ──────────────────────────────────────────────────
+
 
 @pytest.fixture
 def sample_df():
     """Create a minimal synthetic dataset matching the UCI schema."""
     np.random.seed(42)
     n = 100
-    df = pd.DataFrame({
-        "age":      np.random.randint(30, 75, n),
-        "sex":      np.random.randint(0, 2, n),
-        "cp":       np.random.randint(0, 4, n),
-        "trestbps": np.random.randint(90, 180, n),
-        "chol":     np.random.randint(150, 400, n),
-        "fbs":      np.random.randint(0, 2, n),
-        "restecg":  np.random.randint(0, 3, n),
-        "thalach":  np.random.randint(80, 200, n),
-        "exang":    np.random.randint(0, 2, n),
-        "oldpeak":  np.random.uniform(0, 5, n).round(1),
-        "slope":    np.random.randint(0, 3, n),
-        "ca":       np.random.randint(0, 4, n),
-        "thal":     np.random.randint(0, 3, n),
-        "target":   np.random.randint(0, 2, n),
-    })
+    df = pd.DataFrame(
+        {
+            "age": np.random.randint(30, 75, n),
+            "sex": np.random.randint(0, 2, n),
+            "cp": np.random.randint(0, 4, n),
+            "trestbps": np.random.randint(90, 180, n),
+            "chol": np.random.randint(150, 400, n),
+            "fbs": np.random.randint(0, 2, n),
+            "restecg": np.random.randint(0, 3, n),
+            "thalach": np.random.randint(80, 200, n),
+            "exang": np.random.randint(0, 2, n),
+            "oldpeak": np.random.uniform(0, 5, n).round(1),
+            "slope": np.random.randint(0, 3, n),
+            "ca": np.random.randint(0, 4, n),
+            "thal": np.random.randint(0, 3, n),
+            "target": np.random.randint(0, 2, n),
+        }
+    )
     return df
 
 
@@ -52,6 +56,7 @@ def trained_model_and_data(sample_df):
 
 
 # ── Tests: preprocess.py ──────────────────────────────────────
+
 
 class TestValidateData:
     def test_returns_dict(self, sample_df):
@@ -113,11 +118,22 @@ class TestPreprocess:
 
 # ── Tests: evaluate.py ────────────────────────────────────────
 
+
 class TestEvaluateModel:
     def test_returns_all_metrics(self, trained_model_and_data):
         model, _, X_test, _, y_test, _ = trained_model_and_data
         metrics = evaluate_model(model, X_test, y_test, "RF_test")
-        required = {"accuracy","auc_roc","f1_score","sensitivity","specificity","tp","tn","fp","fn"}
+        required = {
+            "accuracy",
+            "auc_roc",
+            "f1_score",
+            "sensitivity",
+            "specificity",
+            "tp",
+            "tn",
+            "fp",
+            "fn",
+        }
         assert required.issubset(set(metrics.keys()))
 
     def test_accuracy_in_range(self, trained_model_and_data):
@@ -165,6 +181,7 @@ class TestDriftDetection:
 
 # ── Tests: API input validation (FastAPI TestClient) ──────────
 
+
 class TestInputValidation:
     """Test the FastAPI endpoints using the built-in TestClient."""
 
@@ -172,19 +189,32 @@ class TestInputValidation:
     def setup_client(self):
         """Set up FastAPI test client."""
         import os
+
         os.environ["BUNDLE_PATH"] = os.path.join(
             os.path.dirname(__file__), "../models/production_bundle.pkl"
         )
-        from api.app import app
         from fastapi.testclient import TestClient
+
+        from api.app import app
+
         self.client = TestClient(app)
 
     def test_valid_patient(self):
         """A fully valid patient record should return 200 with a prediction."""
         valid = {
-            "age":58,"sex":1,"cp":0,"trestbps":140,"chol":268,
-            "fbs":0,"restecg":0,"thalach":152,"exang":1,
-            "oldpeak":2.1,"slope":1,"ca":1,"thal":2
+            "age": 58,
+            "sex": 1,
+            "cp": 0,
+            "trestbps": 140,
+            "chol": 268,
+            "fbs": 0,
+            "restecg": 0,
+            "thalach": 152,
+            "exang": 1,
+            "oldpeak": 2.1,
+            "slope": 1,
+            "ca": 1,
+            "thal": 2,
         }
         r = self.client.post("/predict", json=valid)
         assert r.status_code == 200
@@ -203,10 +233,19 @@ class TestInputValidation:
     def test_out_of_range(self):
         """Out-of-range values should return 422 Unprocessable Entity."""
         bad = {
-            "age":200,  # invalid — max is 100
-            "sex":1,"cp":0,"trestbps":140,"chol":268,
-            "fbs":0,"restecg":0,"thalach":152,"exang":1,
-            "oldpeak":2.1,"slope":1,"ca":1,"thal":2
+            "age": 200,  # invalid — max is 100
+            "sex": 1,
+            "cp": 0,
+            "trestbps": 140,
+            "chol": 268,
+            "fbs": 0,
+            "restecg": 0,
+            "thalach": 152,
+            "exang": 1,
+            "oldpeak": 2.1,
+            "slope": 1,
+            "ca": 1,
+            "thal": 2,
         }
         r = self.client.post("/predict", json=bad)
         assert r.status_code == 422
@@ -224,4 +263,3 @@ class TestInputValidation:
         data = r.json()
         assert "model_type" in data
         assert "feature_names" in data
-

@@ -6,29 +6,36 @@ Trains Random Forest + Gradient Boosting, logs all params,
 metrics, artifacts, and registers the best model.
 """
 
-import os
 import json
+import logging
+import os
+
 import joblib
-import numpy as np
-import pandas as pd
 import mlflow
 import mlflow.sklearn
+import numpy as np
+import pandas as pd
 from mlflow.models.signature import infer_signature
-
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    f1_score, roc_auc_score, confusion_matrix,
-    classification_report
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
 )
-import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
+import os as _os
+
 # ── Model configs to evaluate ──
 # These defaults are overridden by params.yaml when run via DVC
-import yaml as _yaml, os as _os
+import yaml as _yaml
+
 
 def _load_params():
     p = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "params.yaml")
@@ -36,6 +43,7 @@ def _load_params():
         with open(p) as f:
             return _yaml.safe_load(f)
     return {}
+
 
 _params = _load_params()
 _t = _params.get("train", {})
@@ -47,28 +55,28 @@ MODEL_CONFIGS = [
         "params": {
             "n_estimators": int(_t.get("n_estimators_rf", 200)),
             "max_features": _t.get("max_features_rf", "sqrt"),
-            "criterion":    _t.get("criterion_rf", "gini"),
-            "bootstrap":    True,
+            "criterion": _t.get("criterion_rf", "gini"),
+            "bootstrap": True,
             "random_state": int(_params.get("data", {}).get("random_state", 42)),
-            "n_jobs":       -1,
-        }
+            "n_jobs": -1,
+        },
     },
     {
         "name": "GradientBoosting",
         "class": GradientBoostingClassifier,
         "params": {
-            "n_estimators":  int(_t.get("n_estimators_gb", 100)),
+            "n_estimators": int(_t.get("n_estimators_gb", 100)),
             "learning_rate": float(_t.get("learning_rate_gb", 0.1)),
-            "max_depth":     int(_t.get("max_depth_gb", 3)),
-            "random_state":  int(_params.get("data", {}).get("random_state", 42)),
-        }
+            "max_depth": int(_t.get("max_depth_gb", 3)),
+            "random_state": int(_params.get("data", {}).get("random_state", 42)),
+        },
     },
 ]
 
 
-def find_best_threshold(y_true, y_prob_pos,
-                        min_sensitivity: float = None,
-                        min_specificity: float = None) -> float:
+def find_best_threshold(
+    y_true, y_prob_pos, min_sensitivity: float = None, min_specificity: float = None
+) -> float:
     """
     Search over thresholds [0.1, 0.9] to find the value that satisfies
     both clinical constraints (sensitivity >= min_sensitivity AND
@@ -84,7 +92,7 @@ def find_best_threshold(y_true, y_prob_pos,
 
     thresholds = np.linspace(0.1, 0.9, 81)
     best_thresh = 0.60
-    best_score  = -1.0
+    best_score = -1.0
 
     for t in thresholds:
         y_pred_t = (y_prob_pos >= t).astype(int)
@@ -96,7 +104,7 @@ def find_best_threshold(y_true, y_prob_pos,
         if sens >= min_sensitivity and spec >= min_specificity:
             score = 2 * sens * spec / (sens + spec)
             if score > best_score:
-                best_score  = score
+                best_score = score
                 best_thresh = t
 
     return float(round(best_thresh, 2))
@@ -107,22 +115,25 @@ def compute_metrics(y_true, y_pred, y_prob, threshold: float = 0.5) -> dict:
     cm = confusion_matrix(y_true, y_pred)
     tn, fp, fn, tp = cm.ravel()
     return {
-        "accuracy":         round(accuracy_score(y_true, y_pred), 4),
-        "precision":        round(precision_score(y_true, y_pred, zero_division=0), 4),
-        "recall":           round(recall_score(y_true, y_pred, zero_division=0), 4),
-        "f1_score":         round(f1_score(y_true, y_pred, zero_division=0), 4),
-        "auc_roc":          round(roc_auc_score(y_true, y_prob[:, 1]), 4),
-        "true_positive":    int(tp),
-        "true_negative":    int(tn),
-        "false_positive":   int(fp),
-        "false_negative":   int(fn),
-        "specificity":      round(tn / (tn + fp), 4) if (tn + fp) > 0 else 0.0,
+        "accuracy": round(accuracy_score(y_true, y_pred), 4),
+        "precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
+        "recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
+        "f1_score": round(f1_score(y_true, y_pred, zero_division=0), 4),
+        "auc_roc": round(roc_auc_score(y_true, y_prob[:, 1]), 4),
+        "true_positive": int(tp),
+        "true_negative": int(tn),
+        "false_positive": int(fp),
+        "false_negative": int(fn),
+        "specificity": round(tn / (tn + fp), 4) if (tn + fp) > 0 else 0.0,
         "decision_threshold": round(threshold, 2),
     }
 
 
 def train_and_log(
-    X_train, X_test, y_train, y_test,
+    X_train,
+    X_test,
+    y_train,
+    y_test,
     scaler,
     experiment_name: str = "CardioSense_AI",
     models_dir: str = "models",
@@ -142,22 +153,24 @@ def train_and_log(
     exp = mlflow.set_experiment(experiment_name)
     log.info(f"MLflow experiment: {experiment_name}  (id={exp.experiment_id})")
 
-    best_model    = None
-    best_metrics  = {}
-    best_run_id   = None
-    best_auc      = -1.0
-    best_name     = ""
+    best_model = None
+    best_metrics = {}
+    best_run_id = None
+    best_auc = -1.0
+    best_name = ""
     best_threshold = 0.5
 
     # ── parent run — holds experiment-level metadata ──
     with mlflow.start_run(run_name="CardioSense_Training_Pipeline") as parent_run:
 
-        mlflow.set_tags({
-            "project":   "CardioSense AI",
-            "dataset":   "UCI Cleveland Heart Disease",
-            "author":    "Arwin Dominic, Dinesh Kumar, Chethan K Chavan, Amaresh",
-            "pipeline":  "MLOps v1.0",
-        })
+        mlflow.set_tags(
+            {
+                "project": "CardioSense AI",
+                "dataset": "UCI Cleveland Heart Disease",
+                "author": "Arwin Dominic, Dinesh Kumar, Chethan K Chavan, Amaresh",
+                "pipeline": "MLOps v1.0",
+            }
+        )
 
         for cfg in MODEL_CONFIGS:
             model_name = cfg["name"]
@@ -184,17 +197,18 @@ def train_and_log(
                 metrics = compute_metrics(y_test, y_pred, y_prob, threshold=best_thresh)
                 mlflow.log_metrics(metrics)
 
-                log.info(f"  Accuracy={metrics['accuracy']} "
-                         f"AUC-ROC={metrics['auc_roc']} "
-                         f"F1={metrics['f1_score']}")
+                log.info(
+                    f"  Accuracy={metrics['accuracy']} "
+                    f"AUC-ROC={metrics['auc_roc']} "
+                    f"F1={metrics['f1_score']}"
+                )
 
                 # Classification report as artifact
-                cr = classification_report(y_test, y_pred,
-                                           target_names=["No Disease","Disease"])
+                cr = classification_report(y_test, y_pred, target_names=["No Disease", "Disease"])
                 cr_path = f"{models_dir}/{model_name}_classification_report.txt"
                 with open(cr_path, "w") as f:
                     f.write(f"Model: {model_name}\n")
-                    f.write("="*50 + "\n")
+                    f.write("=" * 50 + "\n")
                     f.write(cr)
                 mlflow.log_artifact(cr_path, artifact_path="reports")
 
@@ -222,25 +236,27 @@ def train_and_log(
 
                 # Track best
                 if metrics["auc_roc"] > best_auc:
-                    best_auc       = metrics["auc_roc"]
-                    best_model     = model
-                    best_metrics   = metrics
-                    best_run_id    = child_run.info.run_id
-                    best_name      = model_name
+                    best_auc = metrics["auc_roc"]
+                    best_model = model
+                    best_metrics = metrics
+                    best_run_id = child_run.info.run_id
+                    best_name = model_name
                     best_threshold = best_thresh
 
         # Log best model info to parent run
-        mlflow.log_params({
-            "best_model":    best_name,
-            "best_auc_roc":  best_auc,
-            "best_accuracy": best_metrics.get("accuracy"),
-        })
+        mlflow.log_params(
+            {
+                "best_model": best_name,
+                "best_auc_roc": best_auc,
+                "best_accuracy": best_metrics.get("accuracy"),
+            }
+        )
 
         # Save scaler + best model together as production bundle
         bundle = {
-            "model":     best_model,
-            "scaler":    scaler,
-            "features":  list(X_train.columns),
+            "model": best_model,
+            "scaler": scaler,
+            "features": list(X_train.columns),
             "threshold": best_threshold,
         }
         bundle_path = f"{models_dir}/production_bundle.pkl"

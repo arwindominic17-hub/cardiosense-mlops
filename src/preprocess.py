@@ -5,30 +5,42 @@ Data loading, validation, and preprocessing pipeline for CardioSense AI.
 Part of the MLOps integration — all steps are logged to MLflow.
 """
 
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-import mlflow
 import logging
 import os
+
+import mlflow
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
 FEATURE_COLS = [
-    "age", "sex", "cp", "trestbps", "chol", "fbs",
-    "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal",
 ]
 TARGET_COL = "target"
 
 EXPECTED_RANGES = {
-    "age":      (20, 100),
+    "age": (20, 100),
     "trestbps": (80, 220),
-    "chol":     (100, 600),
-    "thalach":  (60, 210),
-    "oldpeak":  (0.0, 7.0),
-    "ca":       (0, 4),
+    "chol": (100, 600),
+    "thalach": (60, 210),
+    "oldpeak": (0.0, 7.0),
+    "ca": (0, 4),
 }
 
 
@@ -84,19 +96,23 @@ def validate_data(df: pd.DataFrame) -> dict:
 
     # Log to MLflow if a run is active
     if mlflow.active_run():
-        mlflow.log_metrics({
-            "data_total_rows":        len(df),
-            "data_missing_total":     report["total_missing_values"],
-            "data_class_0":           report["class_0_count"],
-            "data_class_1":           report["class_1_count"],
-            "data_balance_ratio":     report["class_balance_ratio"],
-            "data_out_of_range":      report["total_out_of_range"],
-            "data_duplicate_rows":    report["duplicate_rows"],
-        })
+        mlflow.log_metrics(
+            {
+                "data_total_rows": len(df),
+                "data_missing_total": report["total_missing_values"],
+                "data_class_0": report["class_0_count"],
+                "data_class_1": report["class_1_count"],
+                "data_balance_ratio": report["class_balance_ratio"],
+                "data_out_of_range": report["total_out_of_range"],
+                "data_duplicate_rows": report["duplicate_rows"],
+            }
+        )
 
-    log.info(f"Data validation: {report['total_missing_values']} missing, "
-             f"{report['duplicate_rows']} duplicates, "
-             f"class balance {report['class_balance_ratio']:.2f}")
+    log.info(
+        f"Data validation: {report['total_missing_values']} missing, "
+        f"{report['duplicate_rows']} duplicates, "
+        f"class balance {report['class_balance_ratio']:.2f}"
+    )
     return report
 
 
@@ -126,23 +142,25 @@ def preprocess(df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42)
     # StandardScaler — fit ONLY on training data
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled  = scaler.transform(X_test)
+    X_test_scaled = scaler.transform(X_test)
 
     # Log split info to MLflow
     if mlflow.active_run():
-        mlflow.log_params({
-            "test_size":          test_size,
-            "random_state":       random_state,
-            "train_samples":      len(X_train),
-            "test_samples":       len(X_test),
-            "n_features":         len(FEATURE_COLS),
-            "scaler":             "StandardScaler",
-        })
+        mlflow.log_params(
+            {
+                "test_size": test_size,
+                "random_state": random_state,
+                "train_samples": len(X_train),
+                "test_samples": len(X_test),
+                "n_features": len(FEATURE_COLS),
+                "scaler": "StandardScaler",
+            }
+        )
 
     return (
         pd.DataFrame(X_train_scaled, columns=FEATURE_COLS),
-        pd.DataFrame(X_test_scaled,  columns=FEATURE_COLS),
+        pd.DataFrame(X_test_scaled, columns=FEATURE_COLS),
         y_train.reset_index(drop=True),
         y_test.reset_index(drop=True),
-        scaler
+        scaler,
     )

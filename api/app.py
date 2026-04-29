@@ -6,16 +6,16 @@ Exposes /predict, /predict/batch, /health, /metrics, and /model-info endpoints.
 Auto-generated docs available at /docs and /redoc.
 """
 
+import logging
 import os
 import time
-import logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import List, Optional
+
 import joblib
 import numpy as np
 import pandas as pd
-from datetime import datetime, timezone
-from typing import List, Optional
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
@@ -26,15 +26,15 @@ log = logging.getLogger(__name__)
 # ── Load production bundle ──────────────────────────────────────
 BUNDLE_PATH = os.environ.get("BUNDLE_PATH", "models/production_bundle.pkl")
 
-MODEL    = None
-SCALER   = None
+MODEL = None
+SCALER = None
 FEATURES = None
 THRESHOLD = 0.5
 
 try:
-    bundle   = joblib.load(BUNDLE_PATH)
-    MODEL    = bundle["model"]
-    SCALER   = bundle["scaler"]
+    bundle = joblib.load(BUNDLE_PATH)
+    MODEL = bundle["model"]
+    SCALER = bundle["scaler"]
     FEATURES = bundle["features"]
     THRESHOLD = float(bundle.get("threshold", 0.5))
     log.info(f"Model loaded from: {BUNDLE_PATH}")
@@ -45,128 +45,159 @@ except Exception as e:
 
 # ── Runtime stats ───────────────────────────────────────────────
 STATS = {
-    "total_requests":   0,
+    "total_requests": 0,
     "successful_preds": 0,
-    "failed_preds":     0,
-    "high_risk_count":  0,
-    "low_risk_count":   0,
-    "start_time":       datetime.now(timezone.utc).isoformat(),
+    "failed_preds": 0,
+    "high_risk_count": 0,
+    "low_risk_count": 0,
+    "start_time": datetime.now(timezone.utc).isoformat(),
 }
 
 FEATURE_RANGES = {
-    "age":      (20, 100),  "sex":      (0, 1),
-    "cp":       (0, 3),     "trestbps": (80, 220),
-    "chol":     (100, 600), "fbs":      (0, 1),
-    "restecg":  (0, 2),     "thalach":  (60, 210),
-    "exang":    (0, 1),     "oldpeak":  (0.0, 7.0),
-    "slope":    (0, 2),     "ca":       (0, 4),
-    "thal":     (0, 2),
+    "age": (20, 100),
+    "sex": (0, 1),
+    "cp": (0, 3),
+    "trestbps": (80, 220),
+    "chol": (100, 600),
+    "fbs": (0, 1),
+    "restecg": (0, 2),
+    "thalach": (60, 210),
+    "exang": (0, 1),
+    "oldpeak": (0.0, 7.0),
+    "slope": (0, 2),
+    "ca": (0, 4),
+    "thal": (0, 2),
 }
 
 FEATURE_COLS = [
-    "age", "sex", "cp", "trestbps", "chol", "fbs",
-    "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal",
 ]
 
 
 # ── Pydantic Models ─────────────────────────────────────────────
 
+
 class PatientInput(BaseModel):
-    age:      float = Field(..., ge=20,  le=100,  description="Age in years")
-    sex:      float = Field(..., ge=0,   le=1,    description="Sex (0=female, 1=male)")
-    cp:       float = Field(..., ge=0,   le=3,    description="Chest pain type (0-3)")
-    trestbps: float = Field(..., ge=80,  le=220,  description="Resting blood pressure (mmHg)")
-    chol:     float = Field(..., ge=100, le=600,  description="Serum cholesterol (mg/dl)")
-    fbs:      float = Field(..., ge=0,   le=1,    description="Fasting blood sugar > 120 mg/dl")
-    restecg:  float = Field(..., ge=0,   le=2,    description="Resting ECG results (0-2)")
-    thalach:  float = Field(..., ge=60,  le=210,  description="Max heart rate achieved")
-    exang:    float = Field(..., ge=0,   le=1,    description="Exercise induced angina (0/1)")
-    oldpeak:  float = Field(..., ge=0.0, le=7.0,  description="ST depression induced by exercise")
-    slope:    float = Field(..., ge=0,   le=2,    description="Slope of peak exercise ST segment")
-    ca:       float = Field(..., ge=0,   le=4,    description="Number of major vessels (0-4)")
-    thal:     float = Field(..., ge=0,   le=2,    description="Thalassemia (0-2)")
+    age: float = Field(..., ge=20, le=100, description="Age in years")
+    sex: float = Field(..., ge=0, le=1, description="Sex (0=female, 1=male)")
+    cp: float = Field(..., ge=0, le=3, description="Chest pain type (0-3)")
+    trestbps: float = Field(..., ge=80, le=220, description="Resting blood pressure (mmHg)")
+    chol: float = Field(..., ge=100, le=600, description="Serum cholesterol (mg/dl)")
+    fbs: float = Field(..., ge=0, le=1, description="Fasting blood sugar > 120 mg/dl")
+    restecg: float = Field(..., ge=0, le=2, description="Resting ECG results (0-2)")
+    thalach: float = Field(..., ge=60, le=210, description="Max heart rate achieved")
+    exang: float = Field(..., ge=0, le=1, description="Exercise induced angina (0/1)")
+    oldpeak: float = Field(..., ge=0.0, le=7.0, description="ST depression induced by exercise")
+    slope: float = Field(..., ge=0, le=2, description="Slope of peak exercise ST segment")
+    ca: float = Field(..., ge=0, le=4, description="Number of major vessels (0-4)")
+    thal: float = Field(..., ge=0, le=2, description="Thalassemia (0-2)")
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "age": 58, "sex": 1, "cp": 0, "trestbps": 140,
-                "chol": 268, "fbs": 0, "restecg": 0, "thalach": 152,
-                "exang": 1, "oldpeak": 2.1, "slope": 1, "ca": 1, "thal": 2
+                "age": 58,
+                "sex": 1,
+                "cp": 0,
+                "trestbps": 140,
+                "chol": 268,
+                "fbs": 0,
+                "restecg": 0,
+                "thalach": 152,
+                "exang": 1,
+                "oldpeak": 2.1,
+                "slope": 1,
+                "ca": 1,
+                "thal": 2,
             }
         }
     }
 
 
 class BatchInput(BaseModel):
-    patients: List[PatientInput] = Field(..., max_length=100,
-                                         description="List of patients (max 100)")
+    patients: List[PatientInput] = Field(
+        ..., max_length=100, description="List of patients (max 100)"
+    )
 
 
 class PredictionResponse(BaseModel):
-    prediction:            int
-    label:                 str
-    risk_probability:      float
-    risk_level:            str
-    confidence:            float
+    prediction: int
+    label: str
+    risk_probability: float
+    risk_level: str
+    confidence: float
     feature_contributions: dict
-    recommendation:        str
-    decision_threshold:    float
-    latency_ms:            float
-    model_version:         str
-    timestamp:             str
+    recommendation: str
+    decision_threshold: float
+    latency_ms: float
+    model_version: str
+    timestamp: str
 
 
 class BatchPredictionResult(BaseModel):
-    patient_index:    int
-    prediction:       int
+    patient_index: int
+    prediction: int
     risk_probability: float
-    risk_level:       str
+    risk_level: str
 
 
 class BatchResponse(BaseModel):
-    results:    List[BatchPredictionResult]
-    errors:     List[dict]
-    total_in:   int
-    total_ok:   int
-    total_err:  int
+    results: List[BatchPredictionResult]
+    errors: List[dict]
+    total_in: int
+    total_ok: int
+    total_err: int
     latency_ms: float
 
 
 class HealthResponse(BaseModel):
-    status:    str
-    model:     Optional[str]
+    status: str
+    model: Optional[str]
     threshold: float
     timestamp: str
 
 
 class ModelInfoResponse(BaseModel):
-    model_type:          Optional[str]
-    n_estimators:        Optional[int]
-    n_features:          Optional[int]
-    feature_names:       Optional[list]
-    feature_importance:  dict
-    bundle_path:         str
-    decision_threshold:  float
+    model_type: Optional[str]
+    n_estimators: Optional[int]
+    n_features: Optional[int]
+    feature_names: Optional[list]
+    feature_importance: dict
+    bundle_path: str
+    decision_threshold: float
 
 
 class MetricsResponse(BaseModel):
-    total_requests:   int
+    total_requests: int
     successful_preds: int
-    failed_preds:     int
-    high_risk_count:  int
-    low_risk_count:   int
-    start_time:       str
-    uptime_seconds:   float
-    success_rate:     float
+    failed_preds: int
+    high_risk_count: int
+    low_risk_count: int
+    start_time: str
+    uptime_seconds: float
+    success_rate: float
 
 
 # ── App ─────────────────────────────────────────────────────────
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("CardioSense AI FastAPI starting up...")
     yield
     log.info("CardioSense AI FastAPI shutting down...")
+
 
 app = FastAPI(
     title="CardioSense AI",
@@ -183,6 +214,7 @@ app = FastAPI(
 
 
 # ── Helper ──────────────────────────────────────────────────────
+
 
 def _get_risk(risk_prob: float, pred: int):
     if risk_prob >= 0.75:
@@ -214,6 +246,7 @@ def _feature_contributions(top_n: int = 5) -> dict:
 
 
 # ── Routes ──────────────────────────────────────────────────────
+
 
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 async def health():
@@ -264,9 +297,9 @@ async def predict(patient: PatientInput):
         X = pd.DataFrame([data])[FEATURE_COLS]
         X_scaled = SCALER.transform(X)
 
-        proba     = MODEL.predict_proba(X_scaled)[0]
+        proba = MODEL.predict_proba(X_scaled)[0]
         risk_prob = round(float(proba[1]), 4)
-        pred      = int(risk_prob >= THRESHOLD)
+        pred = int(risk_prob >= THRESHOLD)
 
         risk_level, recommendation = _get_risk(risk_prob, pred)
         top5 = _feature_contributions()
@@ -314,23 +347,27 @@ async def predict_batch(batch: BatchInput):
     t0 = time.perf_counter()
 
     results = []
-    errors  = []
+    errors = []
 
     for i, patient in enumerate(batch.patients):
         try:
-            data     = patient.model_dump()
-            X        = pd.DataFrame([data])[FEATURE_COLS]
+            data = patient.model_dump()
+            X = pd.DataFrame([data])[FEATURE_COLS]
             X_scaled = SCALER.transform(X)
-            proba    = MODEL.predict_proba(X_scaled)[0]
+            proba = MODEL.predict_proba(X_scaled)[0]
             risk_prob = round(float(proba[1]), 4)
-            pred     = int(risk_prob >= THRESHOLD)
+            pred = int(risk_prob >= THRESHOLD)
 
-            results.append(BatchPredictionResult(
-                patient_index=i,
-                prediction=pred,
-                risk_probability=risk_prob,
-                risk_level="HIGH" if risk_prob >= 0.75 else "MODERATE" if risk_prob >= 0.5 else "LOW",
-            ))
+            results.append(
+                BatchPredictionResult(
+                    patient_index=i,
+                    prediction=pred,
+                    risk_probability=risk_prob,
+                    risk_level=(
+                        "HIGH" if risk_prob >= 0.75 else "MODERATE" if risk_prob >= 0.5 else "LOW"
+                    ),
+                )
+            )
             STATS["successful_preds"] += 1
         except Exception as e:
             errors.append({"patient_index": i, "error": str(e)})
@@ -351,8 +388,7 @@ async def predict_batch(batch: BatchInput):
 async def metrics():
     """Runtime statistics — request counts, success rate, uptime."""
     uptime_s = (
-        datetime.now(timezone.utc) -
-        datetime.fromisoformat(STATS["start_time"])
+        datetime.now(timezone.utc) - datetime.fromisoformat(STATS["start_time"])
     ).total_seconds()
 
     return MetricsResponse(
@@ -366,6 +402,7 @@ async def metrics():
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 5000))
     log.info(f"Starting CardioSense AI FastAPI on port {port}")
     log.info(f"Docs: http://0.0.0.0:{port}/docs")
