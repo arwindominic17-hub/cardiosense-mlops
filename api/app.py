@@ -16,9 +16,8 @@ from typing import List, Optional
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)

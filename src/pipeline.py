@@ -10,13 +10,16 @@ import logging
 import os
 import sys
 
+import joblib
 import mlflow
+import numpy as np
 
-# Add src to path
+# Add src to path so local modules resolve correctly
 sys.path.insert(0, os.path.dirname(__file__))
-from evaluate import detect_drift, evaluate_model, generate_evaluation_report
-from preprocess import load_data, preprocess, validate_data
-from train import train_and_log
+
+from evaluate import detect_drift, evaluate_model, generate_evaluation_report  # noqa: E402
+from preprocess import load_data, preprocess, validate_data  # noqa: E402
+from train import train_and_log  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -83,8 +86,6 @@ def run_pipeline():
     # ── STEP 4: Evaluate ──
     log.info("\n[STEP 4] Model Evaluation")
     # Load the saved bundle to get the optimized threshold
-    import joblib
-
     bundle_path = os.path.join(MODELS_DIR, "production_bundle.pkl")
     bundle = joblib.load(bundle_path)
     best_threshold = float(bundle.get("threshold", 0.5))
@@ -100,8 +101,6 @@ def run_pipeline():
             fi = json.load(f)
 
     # Drift detection: simulate new data = test set with small noise
-    import numpy as np
-
     X_new = X_test.copy()
     X_new["age"] = X_new["age"] + np.random.normal(0, 0.1, len(X_new))
     drift = detect_drift(X_train, X_new, threshold=0.15)

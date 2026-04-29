@@ -8,15 +8,16 @@ Run with: python -m pytest tests/ -v
 import os
 import sys
 
+# Ensure src/ is importable before loading local modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
-import numpy as np
-import pandas as pd
-import pytest
-from sklearn.ensemble import RandomForestClassifier
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
+from sklearn.ensemble import RandomForestClassifier  # noqa: E402
 
-from evaluate import detect_drift, evaluate_model
-from preprocess import FEATURE_COLS, load_data, preprocess, validate_data
+from evaluate import detect_drift, evaluate_model  # noqa: E402
+from preprocess import FEATURE_COLS, load_data, preprocess, validate_data  # noqa: E402
 
 # ── Fixtures ──────────────────────────────────────────────────
 
