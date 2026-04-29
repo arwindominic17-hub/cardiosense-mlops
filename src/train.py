@@ -9,6 +9,7 @@ metrics, artifacts, and registers the best model.
 import json
 import logging
 import os
+import sys
 
 import joblib
 import mlflow
@@ -264,10 +265,8 @@ def train_and_log(
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.path.insert(0, os.path.dirname(__file__))
-    from preprocess import load_data, preprocess
+    from preprocess import load_data, preprocess  # noqa: E402
 
     ROOT = os.path.dirname(os.path.dirname(__file__))
     DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "data", "heart.csv"))
